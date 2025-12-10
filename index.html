@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>MovieHub — Найди свой сериал</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+/* ------------------- ОСНОВНОЙ СТИЛЬ ------------------- */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0d0d0f;
+    color: #fff;
+}
+
+header {
+    padding: 18px 25px;
+    background: #111;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.logo {
+    font-size: 28px;
+    font-weight: bold;
+    color: #ff2e63;
+}
+
+nav a {
+    margin-left: 25px;
+    text-decoration: none;
+    color: #eee;
+    font-size: 17px;
+}
+
+nav a:hover {
+    color: #ff2e63;
+}
+
+.container {
+    width: 90%;
+    max-width: 1100px;
+    margin: 40px auto;
+}
+
+/* ------------------- КАРТОЧКИ ------------------- */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 22px;
+}
+
+.card {
+    background: #1b1b1f;
+    padding: 10px;
+    border-radius: 12px;
+    transition: 0.25s;
+    position: relative;
+}
+
+.card:hover {
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
+.card img {
+    width: 100%;
+    border-radius: 10px;
+}
+
+.title {
+    font-size: 17px;
+    margin: 10px 0 5px;
+}
+
+.year {
+    color: #bbb;
+    font-size: 14px;
+}
+
+/* ------------------- СЕРДЕЧКО ------------------- */
+.heart {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 26px;
+    cursor: pointer;
+    color: #fff7;
+    transition: 0.3s;
+}
+
+.heart.active {
+    color: #ff2e63;
+}
+
+/* ------------------- МОДАЛКА ------------------- */
+#modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.78);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: #18181b;
+    padding: 25px;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 500px;
+}
+
+.close {
+    float: right;
+    cursor: pointer;
+    font-size: 22px;
+}
+
+textarea {
+    width: 100%;
+    height: 90px;
+    border-radius: 10px;
+    border: none;
+    padding: 10px;
+}
+
+button {
+    background: #ff2e63;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.rating span {
+    font-size: 24px;
+    cursor: pointer;
+    color: #444;
+}
+
+.rating span.active {
+    color: gold;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">MovieHub</div>
+
+    <nav>
+        <a href="#" onclick="showPage('home')">Главная</a>
+        <a href="#" onclick="showPage('favorites')">Избранное</a>
+    </nav>
+</header>
+
+<div class="container">
+<h2 id="pageTitle">Каталог сериалов</h2>
+
+<!-- Главная -->
+<div id="homePage">
+    <div id="movieGrid" class="grid"></div>
+</div>
+
+<!-- Избранное -->
+<div id="favoritesPage" style="display:none;">
+    <h2>Твои избранные</h2>
+    <div id="favGrid" class="grid"></div>
+</div>
+
+</div>
+
+<!-- Модалка -->
+<div id="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">×</span>
+        <h2 id="modalTitle"></h2>
+        <p id="modalYear"></p>
+
+        <h3>Оставить рецензию</h3>
+        <textarea id="reviewText"></textarea>
+
+        <h3>Рейтинг</h3>
+        <div class="rating" id="ratingStars"></div>
+
+        <button onclick="saveReview()">Сохранить</button>
+    </div>
+</div>
+
+<script>
+/* ----------- СПИСОК СЕРИАЛОВ ----------- */
+let movies = [
+    { id:1, title:"Бумажный дом", year:2017, img:"https://i.imgur.com/kH5s6su.jpeg" },
+    { id:2, title:"Очень странные дела", year:2016, img:"https://i.imgur.com/NCCdN5k.jpeg" },
+    { id:3, title:"Игра престолов", year:2011, img:"https://i.imgur.com/nYxuK3U.jpeg" },
+    { id:4, title:"Во все тяжкие", year:2008, img:"https://i.imgur.com/cRsVQJm.jpeg" },
+    { id:5, title:"Эйфория", year:2019, img:"https://i.imgur.com/RpxroWw.jpeg" },
+    { id:6, title:"Локи", year:2021, img:"https://i.imgur.com/xvfsUlZ.jpeg" },
+    { id:7, title:"Ведьмак", year:2019, img:"https://i.imgur.com/nhsQIr3.jpeg" },
+    { id:8, title:"Пацаны", year:2019, img:"https://i.imgur.com/cpBteLo.jpeg" },
+    { id:9, title:"Бриджертоны", year:2020, img:"https://i.imgur.com/cnvYmZr.jpeg" },
+    { id:10,title:"Корона", year:2016, img:"https://i.imgur.com/5Qv2I1Z.jpeg" }
+];
+
+/* ----------- LOCALSTORAGE ----------- */
+let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+let reviews = JSON.parse(localStorage.getItem("reviews")) || {};
+let ratings = JSON.parse(localStorage.getItem("ratings")) || {};
+
+function saveLS() {
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+    localStorage.setItem("reviews", JSON.stringify(reviews));
+    localStorage.setItem("ratings", JSON.stringify(ratings));
+}
+
+/* ----------- РЕНДЕР КАРТОЧЕК ----------- */
+function renderMovies(list, gridId) {
+    const grid = document.getElementById(gridId);
+    grid.innerHTML = "";
+
+    list.forEach(m => {
+        let card = document.createElement("div");
+        card.className = "card";
+
+        let isFav = favorites.includes(m.id);
+        
+        card.innerHTML = `
+            <img src="${m.img}">
+            <div class="title">${m.title}</div>
+            <div class="year">${m.year}</div>
+            <div class="heart ${isFav ? "active" : ""}" onclick="toggleFav(event, ${m.id})">♥</div>
+        `;
+
+        card.onclick = (e) => {
+            if (!e.target.classList.contains("heart")) openModal(m.id);
+        };
+
+        grid.appendChild(card);
+    });
+}
+
+renderMovies(movies, "movieGrid");
+
+/* ----------- ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ ----------- */
+function showPage(page) {
+    document.getElementById("homePage").style.display = page === "home" ? "block" : "none";
+    document.getElementById("favoritesPage").style.display = page === "favorites" ? "block" : "none";
+
+    if (page === "favorites") {
+        let favList = movies.filter(m => favorites.includes(m.id));
+        renderMovies(favList, "favGrid");
+        document.getElementById("pageTitle").innerText = "Избранные сериалы";
+    } else {
+        document.getElementById("pageTitle").innerText = "Каталог сериалов";
+    }
+}
+
+/* ----------- ИЗБРАННОЕ ----------- */
+function toggleFav(e, id) {
+    e.stopPropagation();
+
+    if (favorites.includes(id)) {
+        favorites = favorites.filter(x => x !== id);
+    } else {
+        favorites.push(id);
+    }
+
+    saveLS();
+    renderMovies(movies, "movieGrid");
+
+    let favList = movies.filter(m => favorites.includes(m.id));
+    renderMovies(favList, "favGrid");
+}
+
+/* ----------- МОДАЛКА ----------- */
+let currentMovie = null;
+
+function openModal(id) {
+    currentMovie = movies.find(m => m.id === id);
+
+    document.getElementById("modalTitle").innerText = currentMovie.title;
+    document.getElementById("modalYear").innerText = currentMovie.year;
+    document.getElementById("reviewText").value = reviews[id] || "";
+
+    renderStars(id);
+
+    document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("modal").style.display = "none";
+}
+
+/* ----------- РЕЙТИНГ ----------- */
+function renderStars(id) {
+    let container = document.getElementById("ratingStars");
+    container.innerHTML = "";
+
+    let currentRating = ratings[id] || 0;
+
+    for (let i = 1; i <= 5; i++) {
+        let star = document.createElement("span");
+        star.innerHTML = "★";
+
+        if (i <= currentRating) star.classList.add("active");
+
+        star.onclick = () => {
+            ratings[id] = i;
+            saveLS();
+            renderStars(id);
+        };
+
+        container.appendChild(star);
+    }
+}
+
+/* ----------- РЕЦЕНЗИИ ----------- */
+function saveReview() {
+    reviews[currentMovie.id] = document.getElementById("reviewText").value;
+    saveLS();
+    closeModal();
+}
+</script>
+
+</body>
+</html>
